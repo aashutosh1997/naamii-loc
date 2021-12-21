@@ -100,7 +100,7 @@ if __name__ == "__main__":
     ds = MetricLearningDataset("datasets/Aachen-Day-Night/images/images_upright",
                                 "pairs/aachen/pairs-query-netvlad50.txt") 
     for d1,d2,d3 in ds:
-        print(d1)
-        print(d2)
-        print(d3)
+        print(d1.shape)
+        print(d2.shape)
+        print(d3.shape)
         break
