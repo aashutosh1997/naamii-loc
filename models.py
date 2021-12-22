@@ -9,7 +9,7 @@ from torchsummary import summary
 from Dataset import load_data
 
 class PosEmbedding(nn.Module):
-    def __init__(self, in_dims : int = 32, in_size : int = 500, emb_size : int = 32):
+    def __init__(self, in_dims : int = 32, in_size : int = 100, emb_size : int = 32):
         self.in_size = in_size
         super().__init__()
         self.projection = nn.Sequential(
@@ -105,7 +105,7 @@ class NLoc(nn.Module):
     def __init__(self,
                  in_dims: int = 32,
                  emb_size: int = 32,
-                 in_size: int = 500,
+                 in_size: int = 100,
                  depth: int = 12,
                  n_heads: int = 8,
                  **kwargs):
@@ -120,18 +120,27 @@ class NLoc(nn.Module):
         
 
 if __name__ == '__main__':
+    summary(NLoc(), (100,32), device='cpu')
+    # data_loader = load_data("datasets/Aachen-Day-Night/images/images_upright",
+    #                             "pairs/aachen/pairs-query-netvlad50.txt",
+    #                             num_workers=0,
+    #                             batch_size=1,
+    #                             triplets=True)
+    # for t1,t2,t3 in iter(data_loader):
+    #     print(t1.shape)
+    #     o1 = PosEmbedding()(t1)
+    #     print(o1.shape)
+    #     o2 = EncoderBlock(num_heads=8)(t1)
+    #     print(o2.shape)
+    #     o3 = NLoc()(t1)
+    #     print(o3.shape)
+    #     break
+    
     data_loader = load_data("datasets/Aachen-Day-Night/images/images_upright",
                                 "pairs/aachen/pairs-query-netvlad50.txt",
-                                num_workers=0,
-                                batch_size=1)
-    for t1,t2,t3 in iter(data_loader):
-        print(t1.shape)
-        o1 = PosEmbedding()(t1)
-        print(o1.shape)
-        o2 = EncoderBlock(num_heads=8)(t1)
-        print(o2.shape)
-        o3 = NLoc()(t1)
-        print(o3.shape)
+                                num_workers=12,
+                                batch_size=32)
+    for des, lbl in iter(data_loader):
+        print(des.shape)
+        print(lbl.shape)
         break
-    
-    summary(NLoc(), (500,32), device='cpu')

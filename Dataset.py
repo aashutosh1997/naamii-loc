@@ -26,8 +26,17 @@ class DataGraph:
             # print(self.data)
             # for i in self.data["matches"]:
             #     print(len(i))
-    
+            
     def get_data(self, idx):
+        n_matches_per_query = self.ntotal//self.nqueries
+        id_q = idx//n_matches_per_query
+        id_m = idx%n_matches_per_query
+        if id_m == 0:
+            return self.data["query"][id_q], id_q
+        else:
+            return self.data["matches"][id_q][id_m], id_q
+    
+    def get_data_rand(self, idx):
         # Note: Assumes equal number of matches for each query e.g. 50 each for 922 Aachen query images 
         n_matches_per_query = self.ntotal//self.nqueries
         id_q = idx//n_matches_per_query
@@ -44,8 +53,11 @@ class DataGraph:
 
     def get_len(self):
         return self.ntotal
+    
+    def get_class_size(self):
+        return self.nqueries
 
-class MetricLearningDataset(Dataset):
+class MetricLearningTriplets(Dataset):
     def __init__(self, data_root, pairs_path):
         self.root_dir = data_root
         self.pairs_path = pairs_path
@@ -56,12 +68,12 @@ class MetricLearningDataset(Dataset):
         return self.dg.get_len()
 
     def __getitem__(self, idx):
-        impth_q, impth_pos, impth_neg = self.dg.get_data(idx)
+        impth_q, impth_pos, impth_neg = self.dg.get_data_rand(idx)
         im_q = Image.open(join(self.root_dir, impth_q)).convert(mode="L")
         im_pos = Image.open(join(self.root_dir, impth_pos)).convert(mode="L")
         im_neg = Image.open(join(self.root_dir, impth_neg)).convert(mode="L")
         
-        orb = cv2.ORB_create()
+        orb = cv2.ORB_create(nfeatures=100)
         im_q = np.array(im_q)
         kp = orb.detect(im_q, None)
         kp, des_q = orb.compute(im_q, kp)
@@ -92,15 +104,43 @@ class MetricLearningDataset(Dataset):
 
         return Tensor(des_q), Tensor(des_pos), Tensor(des_neg)
     
-def load_data(dataset_root, pairs_path, num_workers=0, batch_size=128):
-    ds = MetricLearningDataset(dataset_root, pairs_path)
+class MetricLearningClasses(Dataset):
+    def __init__(self, data_root, pairs_path):
+        self.root_dir = data_root
+        self.dg = DataGraph(pairs_path)
+        self.dg.update_graph()
+        
+    def __len__(self):
+        return self.dg.get_len()
+    
+    def __getitem__(self,idx):
+        impth, lbl = self.dg.get_data(idx)
+        im = Image.open(join(self.root_dir, impth)).convert(mode="L")
+        orb = cv2.ORB_create(nfeatures=100)
+        im = np.array(im)
+        kp = orb.detect(im, None)
+        kp, des = orb.compute(im, kp)
+        return Tensor(des), lbl
+        
+    
+def load_data(dataset_root, pairs_path, num_workers=0, batch_size=128, triplets=False):
+    if triplets:
+        ds = MetricLearningTriplets(dataset_root, pairs_path)
+    else:
+        ds = MetricLearningClasses(dataset_root, pairs_path)
     return DataLoader(ds, num_workers=num_workers, batch_size=batch_size, shuffle=True)
     
 if __name__ == "__main__":
-    ds = MetricLearningDataset("datasets/Aachen-Day-Night/images/images_upright",
+    # ds = MetricLearningDataset("datasets/Aachen-Day-Night/images/images_upright",
+    #                             "pairs/aachen/pairs-query-netvlad50.txt") 
+    # for d1,d2,d3 in ds:
+    #     print(d1.shape)
+    #     print(d2.shape)
+    #     print(d3.shape)
+    #     break
+    ds = MetricLearningClasses("datasets/Aachen-Day-Night/images/images_upright",
                                 "pairs/aachen/pairs-query-netvlad50.txt") 
-    for d1,d2,d3 in ds:
-        print(d1.shape)
-        print(d2.shape)
-        print(d3.shape)
+    for des,lbl in ds:
+        print(des.shape)
+        print(lbl.shape)
         break
